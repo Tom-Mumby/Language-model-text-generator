@@ -8,7 +8,7 @@ To run on an Nvidia GPU the requisite drivers must be installed, a guide to do t
 It is required to install the Hugging Face: transformers, datasets, and evaluate libraries. This can be achieved using `pip install` followed by the package name.
 
 ## Usage
-Before running set the location of your text file as well as the output directory for the model in [config.py](config.py). In addition, choose if the text file is to be used to fine-tune or train a model from scratch.
+Before running [LM_text_generator.py](LM_text_generator.py) set the location of your text file as well as the output directory for the model in [config.py](config.py). In addition, choose if the text file is to be used to fine-tune or train a model from scratch.
 
 If fine-tuning for the first time, the GPT-2 124M parameter model will the downloaded and cached using the [Hugging Face Transformers Library](https://huggingface.co/docs/transformers/index).
 
@@ -20,14 +20,19 @@ Text outputted from the model can be configured in [generate.py](generate.py). T
 
 ## Output
 
-As the training runs, at each epoch the validation loss and accuracy is calculated. These are presented in a graph along with how the training step size changes.
+As the training runs, at each epoch the validation loss and accuracy is calculated. These are presented in a graph along with how the training step size changes. In order to smooth the training loss a [Savitzky–Golay filter](https://en.wikipedia.org/wiki/Savitzky%E2%80%93Golay_filter) is applied.
 
 ![image](docs/graph_example.png)
 
-Above is an example of a graph produced, in this case fine-tuning [shakespeare](https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt). The best results are after 4 epochs, this is confirmed by the values printed to screen, shown below with some generated text. This data is also saved in the model directory.
+Above is an example of a graph produced, in this case fine-tuning [shakespeare](https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt). The best accuracy is found after 4 epochs, this is confirmed by the values shown. Below is an example of some generated text.
 
 ![image](docs/output_example.png)
 
 
 ## Acknowledgments
-The scripts here are drawn from the [run_clm.py](https://github.com/huggingface/transformers/blob/main/examples/pytorch/language-modeling/run_clm.py) script provided as an example from Hugging Face. The generation aspect is explained Patrick von Platen in [this tutorial](https://huggingface.co/blog/how-to-generate) and explanation of more the topics can be found [here](https://huggingface.co/course/chapter1/1). Finally, [The Hundred-Page Machine Learning Book by Andriy Burkov](https://www.waterstones.com/book/the-hundred-page-machine-learning-book/andriy-burkov/9781999579517) I found very helpful.
+Parts of the [train.py](train.py) and [preprocess.py](preprocess.py) script are drawn from the [run_clm.py](https://github.com/huggingface/transformers/blob/main/examples/pytorch/language-modeling/run_clm.py) script provided as an example from Hugging Face. Where this is true is show in the comments. 
+
+A tutorial on transformers and language modelling can be found [here](https://huggingface.co/course/chapter1/1). Using an obtained model to generate text is explained by Patrick von Platen in [this tutorial](https://huggingface.co/blog/how-to-generate). Finally, [the Hundred-Page Machine Learning Book by Andriy Burkov](https://www.waterstones.com/book/the-hundred-page-machine-learning-book/andriy-burkov/9781999579517) is very helpful.
+
+## Licence
+Apache License - Version 2.0

@@ -29,6 +29,7 @@ tokenizer_file_name = output_dir + "/byte-level-BPE_son.tokenizer.json"
 trainer_state_path = output_dir + '/trainer_state.json'
 
 if from_scratch is False:  # fine-tuning gpt2
+
     print("----Fine-tuning model----")
     # tokenizer from GPT-2
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
@@ -41,13 +42,16 @@ if from_scratch is False:  # fine-tuning gpt2
         model_name = "gpt2"
     # load model
     model = AutoModelForCausalLM.from_pretrained(model_name, use_cache=False)
+
 else:  # training from scratch
+
     print("----Training from scratch----")
+
     if exists(tokenizer_file_name):  # model has already starting training
         print("Loading existing model")
         # load model and tokenizer from directory
         model = AutoModelForCausalLM.from_pretrained(output_dir, use_cache=False)
-        tokenizer = PreTrainedTokenizerFast(tokenizer_file=tokenizer_file_name)
+
     else:  # no model exists
         print("Setting up new model")
         from tokenizers import ByteLevelBPETokenizer
@@ -65,6 +69,8 @@ else:  # training from scratch
         # create model from configuration
         print("Creating model")
         model = AutoModelForCausalLM.from_config(config=config)
+
+    tokenizer = PreTrainedTokenizerFast(tokenizer_file=tokenizer_file_name)
 
     print("----Number of Model Parameters----")
     print(model.num_parameters())

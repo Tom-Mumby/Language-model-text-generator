@@ -12,9 +12,7 @@ class Train:
     def do_train(model, tokenizer, lm_datasets, output_dir):
         """Train model using a given tokenizer and dataset"""
 
-        num_train_epochs = 3
-
-
+        num_train_epochs = 6
 
         # seed_data = random.randint(0, 2**32-1)
         # arguments to pass to the trainer
@@ -41,10 +39,10 @@ class Train:
             eval_steps=1,
             load_best_model_at_end=True
             # disable_tqdm=True
-            # load_best_model_at_end=True
         )
 
         def preprocess_logits_for_metrics(logits, labels):
+            """Taken from: https://github.com/huggingface/transformers/blob/main/examples/pytorch/language-modeling/run_clm.py"""
             """Remove extra tensors from logits if needed"""
             if isinstance(logits, tuple):
                 # Depending on the model and config, logits may contain extra tensors,
@@ -56,15 +54,17 @@ class Train:
         metric = evaluate.load("accuracy")
 
         def compute_metrics(eval_preds):
+            """Adapted from: https://github.com/huggingface/transformers/blob/main/examples/pytorch/language-modeling/run_clm.py"""
             print("----computing metrics----")
             generate.do(output_dir=output_dir)
-            if len(trainer.state.log_history) > 1:
-                analyse.process_logs(trainer.state.log_history)
+
             preds, labels = eval_preds
             # preds have the same shape as the labels, after the argmax(-1) has been calculated
             # by preprocess_logits_for_metrics, but we need to shift the labels
             labels = labels[:, 1:].reshape(-1)
             preds = preds[:, :-1].reshape(-1)
+            if len(trainer.state.log_history) > 1:
+                analyse.analyse_logs(trainer.state.log_history)
             return metric.compute(predictions=preds, references=labels)
 
         # set up trainer
@@ -89,11 +89,25 @@ class Train:
         print(num_train_steps)
         trainer.create_optimizer_and_scheduler(num_train_steps)
 
-        # Here can choose optimizer to use
-        from transformers import get_cosine_schedule_with_warmup, get_constant_schedule, get_linear_schedule_with_warmup
-        #trainer.lr_scheduler = get_cosine_schedule_with_warmup(trainer.optimizer, num_warmup_steps=0, num_training_steps=num_train_steps)
-        trainer.lr_scheduler = get_constant_schedule(trainer.optimizer)
-        #trainer.lr_scheduler = get_linear_schedule_with_warmup(trainer.optimizer, num_warmup_steps=0, num_training_steps=num_train_steps)
+        def set_schedule(lr_type):
+            """Returns a learning rate schedule"""
+
+            if lr_type == "CONSTANT":
+                from transformers import get_constant_schedule
+                return get_constant_schedule(trainer.optimizer)
+            if lr_type == "LINEAR":
+                from transformers import get_linear_schedule_with_warmup
+                return get_linear_schedule_with_warmup(trainer.optimizer,
+                                                       num_warmup_steps=0,
+                                                       num_training_steps=num_train_steps)
+            if lr_type == "COSINE":
+                from transformers import get_cosine_schedule_with_warmup
+                return get_cosine_schedule_with_warmup(trainer.optimizer,
+                                                       num_warmup_steps=0,
+                                                       num_training_steps=num_train_steps)
+
+        # Here can choose learning rate schedule to use
+        trainer.lr_scheduler = set_schedule(lr_type="CONSTANT")
 
         print("----Training----")
         # train the model
@@ -104,7 +118,7 @@ class Train:
         generate.do(output_dir=output_dir)
 
         # analyse results and plot graphs
-        analyse.process_logs(trainer.state.log_history, show_graph=True)
+        analyse.analyse_logs(trainer.state.log_history, show_graph=True)
 
 
 

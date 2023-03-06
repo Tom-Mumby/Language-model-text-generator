@@ -11,7 +11,8 @@ class Preprocess:
             return tokenizer(examples["text"])
 
         def group_texts(examples):
-            """Group dataset into lengths of the block size"""
+            """Group dataset into lengths of the block size
+            Taken from: https://github.com/huggingface/transformers/blob/main/examples/pytorch/language-modeling/run_clm.py"""
 
             # concatenate all texts.
             concatenated_examples = {k: sum(examples[k], []) for k in examples.keys()}
@@ -56,14 +57,14 @@ class Preprocess:
             return content_list
 
         # split text file into chunks demarcated by <|endoftext|> token and add these to a file
-        #item_list = read_file_by_eot(text_file)
+        # item_list = read_file_by_eot()
 
         # split text file into chunks of a given length and add these to a file
         item_list = read_file_by_split()
 
         print("Total number of parts text file has been split into")
         print(len(item_list))
-        # Fraction of the parts to use in training set, the rest will go in the validation set. There is no test set in use in this script.
+        # Fraction of to use in training set, the rest will go in the validation set. There is no test set in use in this script.
         train_percentage = 0.9
 
         # split up the list containing the chunks of text
@@ -84,7 +85,7 @@ class Preprocess:
             }
         )
         # Another way to load dataset
-        # raw_datasets = load_dataset("text", data_files="/home/thomas/LM/famous_five.txt", sample_by="paragraph")
+        # raw_datasets = load_dataset("text", data_files="PATH_TO_TEXT_FILE", sample_by="paragraph")
 
         print("----Datasets----")
         print(datasets)
@@ -111,6 +112,5 @@ class Preprocess:
         # check can decode correctly
         print("----Decoded example----")
         print(tokenizer.decode(lm_datasets["validation"][-1]["input_ids"]))
-
         # return dataset
         return lm_datasets

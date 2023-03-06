@@ -1,5 +1,7 @@
 import json
 import matplotlib.pyplot as plt
+from scipy import signal
+import numpy as np
 import os
 
 
@@ -27,24 +29,14 @@ class Analyse:
             self.start_epoch = round(self.previous_logs[-1]['epoch'])
             self.start_step = self.previous_logs[-1]['step'] + 1
 
-        print("Epoch")
+        print("Starting from epoch")
         print(self.start_epoch)
 
-    def __load_json(self, filename):
-        """Loads a json file"""
-        with open(self.output_dir + '/' + filename, 'r') as f:
-            return json.load(f)
-
-    def __write_json(self, data_to_write, filename):
-        """Writes to a json file"""
-        with open(self.output_dir + '/' + filename, 'w') as f:
-            json.dump(data_to_write, f, indent=2)
-
-    def process_logs(self, new_logs, show_graph=False):
+    def analyse_logs(self, new_logs, show_graph=False):
         """Processes log files created during the training, finds the minimum validation loss and maximum accuracy"""
 
-        import copy
         if len(new_logs) > 0:
+            import copy
             new_logs_copy = copy.deepcopy(new_logs)
             # training has finished
             if 'train_runtime' in new_logs_copy[-1]:
@@ -67,16 +59,11 @@ class Analyse:
         self.train_epoch = []
         self.train_loss = []
         self.train_lr = []
+
         # for evaluation data
         self.eval_epoch = []
         self.eval_loss = []
         self.eval_accuracy = []
-
-        # for finding max and min values
-        min_val_loss = 9999
-        val_epoch = 0
-        max_accuracy = 0
-        accuracy_epoch = 0
 
         # loop over entries training output
         for i in range(len(output_list_copy)):
@@ -91,48 +78,70 @@ class Analyse:
                 self.eval_loss.append(current_dict['eval_loss'])
                 self.eval_accuracy.append(current_dict['eval_accuracy'])
 
-                # check if current values are better than the stored max and min values
-                if current_dict['eval_loss'] < min_val_loss:
-                    min_val_loss = current_dict['eval_loss']
-                    val_epoch = current_dict['epoch']
-                if current_dict['eval_accuracy'] > max_accuracy:
-                    max_accuracy = current_dict['eval_accuracy']
-                    accuracy_epoch = current_dict['epoch']
+        def plot_graph():
+            # plot graph
+            fig = plt.figure()
+            fig.set_size_inches(14, 6)
+            # create subplots
+            ax_loss = plt.subplot2grid((2, 2), (0, 0), rowspan=2)
+            ax_accuracy = plt.subplot2grid((2, 2), (0, 1))
+            ax_lr = plt.subplot2grid((2, 2), (1, 1))
 
-        print("Minimum Validation Loss:\t" + str(min_val_loss) + " at Epoch:\t" + str(round(val_epoch)))
-        print("Maximum accuracy:\t" + str(max_accuracy) + " at Epoch:\t" + str(round(accuracy_epoch)))
+            # add evaluation loss to first subplot
+            ax_loss.plot(self.eval_epoch, self.eval_loss, label="Evaluation loss")
 
-        # plot graph
-        fig = plt.figure()
-        fig.set_size_inches(14, 6)
-        # create subplots
-        ax1 = plt.subplot2grid((2, 2), (0, 0), rowspan=2)
-        ax2 = plt.subplot2grid((2, 2), (0, 1))
-        ax3 = plt.subplot2grid((2, 2), (1, 1))
+            # add training loss to first subplot
+            ax_loss.plot(self.train_epoch, self.train_loss, 'tab:orange', label="Training loss")
 
-        # add evaluation loss to first subplot
-        ax1.plot(self.eval_epoch, self.eval_loss, label="Evaluation Loss")
+            try:
+                ax_loss.plot(self.train_epoch, signal.savgol_filter(self.train_loss, window_length=50, polyorder=3), 'tab:green', label="Smoothed training loss")
+            except ValueError:
+                print("Not enough points to run smoothing")
 
-        # add training loss to first subplot
-        ax1.plot(self.train_epoch, self.train_loss, 'tab:orange', label="Training Loss")
-        ax1.set_title('Loss')
-        ax1.legend(loc="upper right")
-        # plot evaluation accuracy
-        ax2.plot(self.eval_epoch, self.eval_accuracy)
-        ax2.set_title('Evaluation Accuracy')
-        # plot learning rate graph
-        ax3.plot(self.train_epoch, self.train_lr, 'tab:red')
-        ax3.set_title('Learning Rate')
-        plt.tight_layout()
+            ax_loss.set_title('Loss', loc="left", size=15)
+            ax_loss.legend(loc="lower left")
 
-        if show_graph:
-            plt.show()
+            # plot evaluation accuracy
+            ax_accuracy.plot(self.eval_epoch, self.eval_accuracy)
+            ax_accuracy.set_title('Evaluation Accuracy', loc="left")
 
-        plt.savefig(self.output_dir + "/graphs.png")
-        plt.close()
+            # plot learning rate graph
+            ax_lr.plot(self.train_epoch, self.train_lr, 'tab:red')
+            ax_lr.set_title('Learning Rate', loc="right")
+            ax_lr.ticklabel_format(scilimits=(0, 0), useMathText=True)
+            plt.tight_layout()
+
+            try:
+                # add max and min labels
+                min_text = "Min validation loss: {:.3f} at epoch: {:.1f}".format(min(self.eval_loss), self.eval_epoch[np.argmin(self.eval_loss)])
+                ax_loss.text(0.5, 0.96, min_text, transform=ax_loss.transAxes)
+                max_text = "Max accuracy: {:.3f} at epoch: {:.1f}".format(max(self.eval_accuracy), self.eval_epoch[np.argmax(self.eval_accuracy)])
+                ax_accuracy.text(0.56, 0.1, max_text, transform=ax_accuracy.transAxes)
+
+            except ValueError:
+                print("No validation data exists yet")
+
+            plt.savefig(self.output_dir + "/graphs.png")
+
+            if show_graph:
+                plt.show()
+
+            plt.close()
+
+        plot_graph()
+
+    def __load_json(self, filename):
+        """Loads a json file"""
+        with open(self.output_dir + '/' + filename, 'r') as f:
+            return json.load(f)
+
+    def __write_json(self, data_to_write, filename):
+        """Writes to a json file"""
+        with open(self.output_dir + '/' + filename, 'w') as f:
+            json.dump(data_to_write, f, indent=2)
 
 
 if __name__ == "__main__":
     # run analysis on a specified model
     analyse = Analyse("PATH_TO_MODEL")
-    analyse.process_logs([], show_graph=True)
+    analyse.analyse_logs([], show_graph=True)
